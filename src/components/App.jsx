@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import { nanoid } from 'nanoid';
 import toast, { Toaster } from 'react-hot-toast';
 import { Searchbar } from './Searchbar/Searchbar';
@@ -8,59 +8,60 @@ import { Button } from './Button/Button';
 import { fetchImages } from '../services/image-api';
 import { AppContainer } from './App.styled';
 
-export default class App extends Component {
-  state = {
-    query: '',
-    images: [],
-    page: 1,
-    loading: false,
+export const App = () => {
+  const [query, setQuery] = useState('');
+  const [images, setImages] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+
+  const changeQuery = newQuery => {
+    setQuery(`${nanoid(5)}/${newQuery}`);
+    setImages([]);
+    setPage(1);
   };
 
-  changeQuery = newQuery => {
-    this.setState({ query: `${nanoid(5)}/${newQuery}`, images: [], page: 1 });
-  };
-
-  async componentDidUpdate(prevProps, prevState) {
-    const { query: prevQuery, page: prevPage } = prevState;
-    const { query: nextQuery, page: nextPage } = this.state;
-    if (prevQuery !== nextQuery || prevPage !== nextPage) {
-      const query = nextQuery.slice(
-        nextQuery.indexOf('/') + 1,
-        nextQuery.length
-      );
-
+  // Запит даних з бекенда
+  useEffect(() => {
+    if (query === '') return;
+    async function getImages() {
       try {
-        this.setState({ loading: true });
-        const response = await fetchImages(query, this.state.page);
+        setLoading(true);
+        const CorrectedQuery = query.slice(
+          query.indexOf('/') + 1,
+          query.length
+        );
+        const response = await fetchImages(CorrectedQuery, page);
         const images = response.hits;
-        this.setState(prevState => ({
-          images: [...prevState.images, ...images],
-        }));
+        if (images.length === 0) {
+          toast.error(
+            'Sorry, there aren`t images for your request. Input a new query'
+          );
+          return;
+        }
+        setImages(prevState => [...prevState, ...images]);
         toast.success('Wow, you are cool!');
       } catch (error) {
         toast.error('Oops, something went wrong, please try again later');
       } finally {
-        this.setState({ loading: false });
+        setLoading(false);
       }
     }
-  }
+    getImages();
+  }, [query, page]);
 
-  handleLoadMore = () => {
-    this.setState(prevState => ({ page: prevState.page + 1 }));
+  const loadMore = () => {
+    setPage(prevState => prevState + 1);
   };
 
-  render() {
-    const { images, loading } = this.state;
-    return (
-      <AppContainer>
-        <Searchbar onSubmit={this.changeQuery} />
-        <ImageGallery images={images} />
-        {loading && <Loader />}
-        {!!images.length && images.length % 12 === 0 && (
-          <Button onClick={this.handleLoadMore} />
-        )}
-        <Toaster />
-      </AppContainer>
-    );
-  }
-}
+  return (
+    <AppContainer>
+      <Searchbar onSubmit={changeQuery} />
+      <ImageGallery images={images} />
+      {loading && <Loader />}
+      {!!images.length && images.length % 12 === 0 && (
+        <Button onClick={loadMore} />
+      )}
+      <Toaster />
+    </AppContainer>
+  );
+};
