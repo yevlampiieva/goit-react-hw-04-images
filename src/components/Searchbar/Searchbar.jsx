@@ -19,7 +19,7 @@ export const Searchbar = ({ onSubmit }) => {
     event.preventDefault();
 
     if (query.trim() === '') {
-      toast.error('Please input some value');
+      toast.error('Please input some query');
       return;
     }
 
